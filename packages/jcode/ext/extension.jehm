@@ -5,6 +5,10 @@ name: OpenChamber
 version: 0.2.4
 type: app
 publisher: openchamber
+authors:
+  - Bohdan Triapitsyn (OpenChamber)
+  - SST (opencode)
+  - jcode (packaging)
 shortDescription: >-
   AI coding agent chat in your IDE — the OpenChamber UI for opencode, shipped as a static bundle
   (no Node.js needed).
