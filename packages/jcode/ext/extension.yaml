@@ -1,11 +1,12 @@
 id: jcode.ext.openchamber
 name: OpenChamber
-version: 0.2.3
+version: 0.2.4
 type: app
-publisher: jcode
+publisher: openchamber
 authors:
-  - jcode
-  - blamspotdev
+  - Bohdan Triapitsyn (OpenChamber)
+  - SST (opencode)
+  - jcode (packaging)
 supportedArches:
   - arm64
 description: AI coding agent chat (opencode + the OpenChamber UI) — no Node.js required.
