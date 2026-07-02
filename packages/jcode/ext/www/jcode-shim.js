@@ -210,6 +210,8 @@
       if (t === 'vscode:openExternalUrl') {
         return JCode.request('workbench.openUrl', { url: p.url }).then(function () { done({}); }, fail);
       }
+      // VS Code editor commands the bundle fires during init — acknowledge so no init promise rejects.
+      if (t === 'vscode:command') return done({});
       if (t === 'api:fs:list') return fsList(p).then(done, fail);
       if (t === 'api:fs/home') return done({ home: '/workspace' });
       if (t === 'api:fs:read') {
