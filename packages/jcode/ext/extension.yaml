@@ -1,0 +1,22 @@
+id: jcode.ext.openchamber
+name: OpenChamber
+version: 0.1.0
+type: app
+publisher: jcode
+authors:
+  - jcode
+  - blamspotdev
+supportedArches:
+  - arm64
+description: AI coding agent (opencode) with the OpenChamber UI, running in the JCode runtime.
+longDescription: >-
+  Chat with an AI coding agent about the projects you have open in JCode. OpenChamber is a rich web
+  UI for the opencode agent; this extension installs both inside the Linux runtime, briefs the agent
+  on how JCode's environment works (/workspace, run configs, toolchain quirks), and hosts the UI as
+  an in-editor page. Initial setup downloads Node.js, opencode, and OpenChamber (network required);
+  bring an API key or subscription for your preferred model provider.
+api:
+  minApiVersion: 1
+  capabilities:
+    - exec
+    - workbench
