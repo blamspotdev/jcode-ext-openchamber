@@ -1,204 +1,73 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OpenChamber</title>
 <style>
-  :root { color-scheme: dark; }
-  body { font-family: system-ui, sans-serif; background: #14151d; color: #d5d9e0; margin: 0; padding: 16px 18px; }
-  h1 { font-size: 18px; margin: 0 0 2px; }
-  .sub { color: #8b93a3; font-size: 12.5px; margin-bottom: 14px; }
-  .card { background: #1c1e29; border: 1px solid #2a2d3c; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; }
-  .row { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 13.5px; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; background: #555c6e; flex: none; }
-  .dot.ok { background: #4caf7d; } .dot.bad { background: #d06262; } .dot.busy { background: #d8b45a; }
-  .grow { flex: 1; }
-  button { background: #2d3350; color: #cfd6ff; border: 1px solid #3c4472; border-radius: 8px;
-           padding: 8px 14px; font-size: 13px; margin: 4px 6px 2px 0; }
-  button:disabled { opacity: .45; }
-  button.primary { background: #3d5afe22; border-color: #3d5afe; color: #aab8ff; }
-  pre { background: #12131a; border: 1px solid #262939; border-radius: 8px; padding: 10px;
-        font-size: 11.5px; white-space: pre-wrap; word-break: break-all; max-height: 260px; overflow-y: auto; }
-  .muted { color: #8b93a3; font-size: 12px; }
+  :root {
+    /* Minimal dark --vscode-* palette: the UI's theme adapter reads these computed variables. */
+    --vscode-editor-background: #14151d;
+    --vscode-editor-foreground: #d5d9e0;
+    --vscode-sideBar-background: #101118;
+    --vscode-sideBar-foreground: #c8cdd6;
+    --vscode-panel-background: #14151d;
+    --vscode-button-background: #3d5afe;
+    --vscode-button-foreground: #ffffff;
+    --vscode-input-background: #1c1e29;
+    --vscode-input-foreground: #d5d9e0;
+    --vscode-focusBorder: #3d5afe;
+    --vscode-errorForeground: #d06262;
+    --vscode-descriptionForeground: #8b93a3;
+    --vscode-textLink-foreground: #7f9cff;
+    --vscode-editor-font-family: monospace;
+    --vscode-font-family: system-ui, sans-serif;
+    --vscode-font-size: 13px;
+  }
+  html, body, #root { height: 100%; width: 100%; margin: 0; padding: 0; }
+  body { overflow: hidden; background: var(--vscode-editor-background); color: var(--vscode-editor-foreground);
+         font-family: var(--vscode-font-family); }
+  #initial-loading { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px; background: var(--vscode-editor-background);
+    transition: opacity .3s; }
+  #initial-loading.fade-out { opacity: 0; pointer-events: none; }
+  .status-text { color: var(--vscode-descriptionForeground); font-size: 12.5px; }
+  .spin { width: 26px; height: 26px; border-radius: 50%; border: 3px solid #2a2d3c;
+          border-top-color: var(--vscode-button-background); animation: r 1s linear infinite; }
+  @keyframes r { to { transform: rotate(360deg); } }
 </style>
+<script>
+  // Globals the bundled webview entry expects BEFORE it loads (see upstream webviewHtml.ts).
+  window.process = window.process || { env: { NODE_ENV: 'production' }, platform: '', version: '', browser: true };
+  window.__VSCODE_CONFIG__ = {
+    workspaceFolder: '/workspace',
+    workspaceFolders: [{ name: 'workspace', path: '/workspace' }],
+    theme: 'dark',
+    connectionStatus: 'connecting',
+    cliAvailable: true,
+    extensionVersion: '1.13.8-jcode',
+    platform: 'linux',
+    arch: 'arm64',
+    panelType: 'chat',
+    viewMode: 'sidebar',
+    initialSessionId: null,
+  };
+  window.__OPENCHAMBER_HOME__ = '/workspace';
+  window.__OPENCHAMBER_VSCODE_THEME__ = 'dark';
+</script>
+<script src="./jcode-shim.js"></script>
 </head>
 <body>
-  <h1>OpenChamber</h1>
-  <div class="sub">AI coding agent (opencode) + OpenChamber UI, running in the JCode Linux runtime.</div>
-
-  <div class="card" id="status">
-    <div class="row"><span class="dot" id="d-api"></span><span class="grow">JCode Extension API</span><span class="muted" id="t-api">checking…</span></div>
-    <div class="row"><span class="dot" id="d-node"></span><span class="grow">Node.js ≥ 20</span><span class="muted" id="t-node">–</span></div>
-    <div class="row"><span class="dot" id="d-oc"></span><span class="grow">opencode agent</span><span class="muted" id="t-oc">–</span></div>
-    <div class="row"><span class="dot" id="d-web"></span><span class="grow">OpenChamber server</span><span class="muted" id="t-web">–</span></div>
+  <div id="initial-loading">
+    <div class="spin"></div>
+    <div class="status-text" id="loading-status">Starting…</div>
   </div>
-
-  <div class="card">
-    <button id="b-setup">Install / update</button>
-    <button id="b-start">Start server</button>
-    <button id="b-open" class="primary">Open OpenChamber</button>
-    <button id="b-stop">Stop</button>
-    <button id="b-log">Log</button>
-    <div class="muted" style="margin-top:6px">
-      First-time setup downloads Node.js, opencode and OpenChamber into the runtime (needs network,
-      several minutes). The agent is briefed about JCode via <code>~/.config/opencode/AGENTS.md</code>.
-    </div>
-  </div>
-
-  <pre id="out">Ready.</pre>
-
-<script>
-// ---- JCode Extension API v1 client (envelope over JCodeNative.request) ----------------------
-window.JCode = (function () {
-  const pending = {}; let seq = 0;
-  return {
-    request(type, payload, softTimeoutMs) {
-      return new Promise((resolve) => {
-        const id = 'q' + (seq++);
-        pending[id] = resolve;
-        try {
-          window.JCodeNative.request(id, JSON.stringify({ type: type, payload: payload || {} }));
-        } catch (e) { delete pending[id]; resolve({ ok: false, error: 'bridge unavailable: ' + e }); return; }
-        if (softTimeoutMs) setTimeout(function () {
-          if (pending[id]) { delete pending[id]; resolve({ ok: false, error: 'timed out' }); }
-        }, softTimeoutMs);
-      });
-    },
-    _onResult(id, payload) {
-      const cb = pending[id]; if (!cb) return; delete pending[id];
-      let r; try { r = JSON.parse(payload); } catch (e) { r = { ok: false, error: String(payload) }; }
-      cb(r);
-    },
-    _onEvent(_name, _json) { /* the launcher doesn't consume host events */ },
-  };
-})();
-
-async function sh(command, timeoutMs) {
-  timeoutMs = timeoutMs || 60000;
-  const r = await JCode.request('exec.run', { command: command, timeoutMs: timeoutMs }, timeoutMs + 20000);
-  if (!r.ok) return { error: r.error };
-  return r.data;
-}
-function out(r) { return (((r && r.stdout) || '') + ((r && r.stderr) || '')).replace(/\s+$/, ''); }
-function okr(r) { return r && !r.error && (r.exitCode === 0 || r.exitCode === undefined); }
-function log(s) { const el = document.getElementById('out'); el.textContent = s; el.scrollTop = el.scrollHeight; }
-function dot(id, cls, txt) {
-  document.getElementById('d-' + id).className = 'dot ' + (cls || '');
-  if (txt !== undefined) document.getElementById('t-' + id).textContent = txt;
-}
-
-const PORT = 4463;
-const BASE = 'http://127.0.0.1:' + PORT + '/';
-
-// The agent briefing installed to ~/.config/opencode/AGENTS.md (see packages/jcode/agent/ in the
-// source repo for the annotated original).
-const AGENTS_MD = [
-'# You are running inside JCode',
-'',
-'You are an AI coding agent inside **JCode**, a native Android IDE on an ARM64 handheld. Your shell',
-'runs in a **proot Ubuntu 24.04 (aarch64)** userland. Hard constraints:',
-'',
-'- Projects live under **/workspace** (a FUSE mount of shared storage). It is **noexec** and has no',
-'  symlink support: never execute compiled binaries from it and never create node_modules there.',
-'  Run compiled output and node_modules from ext4 instead, e.g. $HOME/.jcode-run/<project>/.',
-'- HOME=/root, USER=root, TMPDIR=/tmp. No systemd, no GUI, no Docker, no x86 emulation (apt installs',
-'  aarch64 packages only).',
-'- .NET: export DOTNET_GCHeapHardLimit=0x40000000 before any dotnet command, or the CLR fails with',
-'  0x8007000E trying to reserve 256 GiB.',
-'- The IDE runs projects via **.jcode/run.yaml** (name, readyPort, terminals: label+command list).',
-'  When you set up or fix how a project runs, edit .jcode/run.yaml so the IDE Run button works.',
-'- Dev servers should bind 127.0.0.1; proot shares the host network namespace and the IDE opens the',
-'  device browser against localhost.',
-'- The screen is small and builds are slow: keep output short, prefer incremental commands.',
-].join('\n');
-
-async function refresh() {
-  const hello = await JCode.request('api.hello', {}, 8000);
-  if (hello.ok) dot('api', 'ok', 'v' + hello.data.apiVersion + ' · JCode ' + hello.data.jcodeVersion);
-  else { dot('api', 'bad', hello.error || 'unavailable'); return; }
-
-  const node = await sh('node -v 2>/dev/null', 15000);
-  const nv = out(node); const major = parseInt((nv.match(/^v(\d+)/) || [])[1] || '0', 10);
-  dot('node', major >= 20 ? 'ok' : 'bad', nv || 'not installed');
-
-  const oc = await sh('export PATH="$PATH:/root/.opencode/bin"; opencode --version 2>/dev/null | tail -1', 20000);
-  dot('oc', okr(oc) && out(oc) ? 'ok' : 'bad', out(oc) || 'not installed');
-
-  const web = await sh('curl -sf -o /dev/null -w "%{http_code}" ' + BASE + ' 2>/dev/null', 15000);
-  const up = out(web) === '200';
-  dot('web', up ? 'ok' : 'bad', up ? 'running :' + PORT : 'stopped');
-  document.getElementById('b-open').disabled = !up;
-}
-
-async function setup() {
-  log('Installing… this downloads Node.js, opencode and OpenChamber (several minutes).');
-  dot('node', 'busy'); dot('oc', 'busy'); dot('web', 'busy');
-  const script = [
-    'set -e',
-    'export DEBIAN_FRONTEND=noninteractive',
-    'if ! command -v node >/dev/null 2>&1 || [ "$(node -v | sed -E \'s/v([0-9]+).*/\\1/\')" -lt 20 ]; then',
-    '  apt-get update -qq',
-    '  apt-get install -y -qq curl ca-certificates >/dev/null',
-    '  curl -fsSL https://deb.nodesource.com/setup_22.x | bash - >/dev/null',
-    '  apt-get install -y -qq nodejs >/dev/null',
-    'fi',
-    'apt-get install -y -qq build-essential python3 git curl >/dev/null',
-    'echo "node: $(node -v)"',
-    'if ! [ -x /root/.opencode/bin/opencode ]; then curl -fsSL https://opencode.ai/install | bash; fi',
-    'ln -sf /root/.opencode/bin/opencode /usr/local/bin/opencode 2>/dev/null || true',
-    'echo "opencode: $(opencode --version 2>/dev/null | tail -1)"',
-    'if ! command -v openchamber >/dev/null 2>&1; then npm install -g openchamber; fi',
-    'echo "openchamber: $(openchamber --version 2>/dev/null | head -1 || echo installed)"',
-    'mkdir -p /root/.config/opencode /opt/openchamber',
-    'cat > /root/.config/opencode/AGENTS.md <<\'JCODE_EOF\'',
-    AGENTS_MD,
-    'JCODE_EOF',
-    'echo "agent briefing written to ~/.config/opencode/AGENTS.md"',
-  ].join('\n');
-  const r = await sh(script, 1500000);
-  log(out(r) || r.error || 'done');
-  if (okr(r)) JCode.request('workbench.notify', { message: 'OpenChamber setup finished.' });
-  await refresh();
-}
-
-async function start() {
-  log('Starting OpenChamber on :' + PORT + ' …');
-  dot('web', 'busy');
-  const startCmd = [
-    'export PATH="$PATH:/root/.opencode/bin"',
-    'cd /opt/openchamber',
-    'if ! curl -sf -o /dev/null ' + BASE + ' ; then',
-    '  nohup openchamber serve --port ' + PORT + ' >/opt/openchamber/server.log 2>&1 &',
-    'fi',
-    'for i in $(seq 1 60); do curl -sf -o /dev/null ' + BASE + ' && { echo up; exit 0; }; sleep 1; done',
-    'echo "did not come up; last log lines:"; tail -n 30 /opt/openchamber/server.log 2>/dev/null; exit 1',
-  ].join('\n');
-  const r = await sh(startCmd, 120000);
-  log(out(r) || r.error || '');
-  if (okr(r)) {
-    JCode.request('workbench.notify', { message: 'OpenChamber is running on 127.0.0.1:' + PORT });
-    await refresh();
-  } else { dot('web', 'bad'); }
-}
-
-async function stop() {
-  await sh("pkill -f 'openchamber' 2>/dev/null; pkill -f 'opencode serve' 2>/dev/null; true", 20000);
-  log('Stopped.');
-  await refresh();
-}
-
-async function showLog() {
-  const r = await sh('tail -n 120 /opt/openchamber/server.log 2>/dev/null', 20000);
-  log(out(r) || '(no log yet)');
-}
-
-document.getElementById('b-setup').onclick = setup;
-document.getElementById('b-start').onclick = start;
-document.getElementById('b-stop').onclick = stop;
-document.getElementById('b-log').onclick = showLog;
-document.getElementById('b-open').onclick = function () { window.location.href = BASE; };
-refresh();
-</script>
+  <div id="root"></div>
+  <script type="module">
+    const s = document.createElement('script');
+    s.type = 'module';
+    s.src = './webview/assets/index.js';
+    document.body.appendChild(s);
+  </script>
 </body>
 </html>

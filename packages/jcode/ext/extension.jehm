@@ -2,12 +2,12 @@
 schema: 1
 uniqueName: jcode.ext.openchamber
 name: OpenChamber
-version: 0.1.0
+version: 0.2.0
 type: app
 publisher: jcode
 shortDescription: >-
-  AI coding agent in your IDE — the OpenChamber UI for the opencode agent, running entirely in the
-  JCode Linux runtime.
+  AI coding agent chat in your IDE — the OpenChamber UI for opencode, shipped as a static bundle
+  (no Node.js needed).
 minJCodeVersion: 1.0.0
 targetJCodeVersion: 1.0.0
 category: AI
