@@ -54,6 +54,9 @@
   };
   window.__OPENCHAMBER_HOME__ = '/workspace';
   window.__OPENCHAMBER_VSCODE_THEME__ = 'dark';
+  // Base for any HTTP the UI issues outside the bridge (e.g. /auth/*, /health) — points at the
+  // local opencode server so those requests don't resolve against the file:// origin.
+  window.__OPENCHAMBER_API_BASE_URL__ = 'http://127.0.0.1:4463';
 </script>
 <script src="./jcode-shim.js"></script>
 </head>

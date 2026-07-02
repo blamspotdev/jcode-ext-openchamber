@@ -5,6 +5,10 @@
 (function () {
   'use strict';
 
+  // Capture the real fetch NOW, before the app bundle replaces window.fetch with its bridge router.
+  // The shim's own HTTP (opencode health, /api proxy, SSE) must reach the network directly.
+  var nativeFetch = window.fetch.bind(window);
+
   var OC_PORT = 4463;
   var OC_BASE = 'http://127.0.0.1:' + OC_PORT;
   var SETTINGS_KEY = 'jcode.openchamber.settings';
@@ -99,7 +103,7 @@
     };
     if (payload.bodyBase64) init.body = b64ToBytes(payload.bodyBase64);
     else if (typeof payload.bodyText === 'string') init.body = payload.bodyText;
-    return fetch(OC_BASE + ocPath(payload.path), init).then(function (res) {
+    return nativeFetch(OC_BASE + ocPath(payload.path), init).then(function (res) {
       return res.text().then(function (text) {
         var headers = {};
         res.headers.forEach(function (v, k) { headers[k] = v; });
@@ -115,7 +119,7 @@
     var streamId = 'sse' + (++sseSeq) + '_' + seq;
     var controller = new AbortController();
     sseStreams[streamId] = controller;
-    fetch(OC_BASE + ocPath(payload.path || '/event'), {
+    nativeFetch(OC_BASE + ocPath(payload.path || '/event'), {
       headers: Object.assign({ Accept: 'text/event-stream' }, cleanHeaders(payload.headers)),
       signal: controller.signal,
     }).then(function (res) {
@@ -280,40 +284,53 @@
     window.postMessage({ type: 'connectionStatus', status: status, error: error }, '*');
   }
   function health() {
-    return fetch(OC_BASE + '/global/health').then(function (r) { return r.ok; }, function () { return false; });
+    return nativeFetch(OC_BASE + '/global/health').then(function (r) { return r.ok; }, function () { return false; });
   }
+  function waitHealthy(onOk, onFail) {
+    var tries = 0;
+    var timer = setInterval(function () {
+      tries++;
+      health().then(function (ok) {
+        if (ok) { clearInterval(timer); onOk(); }
+        else if (tries > 45) { clearInterval(timer); onFail(); }
+      });
+    }, 1000);
+  }
+
   function bootOpencode() {
     postConn('connecting');
     health().then(function (up) {
       if (up) { postConn('connected'); return; }
-      setStatus('Starting the opencode agent…');
-      var start = [
-        'export PATH="$PATH:$HOME/.opencode/bin"',
-        'if ! command -v opencode >/dev/null 2>&1; then echo MISSING; exit 1; fi',
-        'mkdir -p /opt/openchamber',
-        'cd /workspace 2>/dev/null || cd /',
-        'nohup opencode serve --hostname 127.0.0.1 --port ' + OC_PORT + ' >/opt/openchamber/opencode.log 2>&1 &',
-        'sleep 1; echo started',
-      ].join('\n');
-      sh(start, 30000).then(function (r) {
-        if (r && r.stdout && r.stdout.indexOf('MISSING') >= 0) {
-          setStatus('opencode is not installed — install it from Tools → Toolchains (AI).');
-          postConn('error', 'opencode is not installed. Install "opencode AI agent" in Tools → Toolchains.');
-          return;
-        }
-        var tries = 0;
-        var timer = setInterval(function () {
-          tries++;
-          health().then(function (ok) {
-            if (ok) { clearInterval(timer); postConn('connected'); }
-            else if (tries > 45) {
-              clearInterval(timer);
-              setStatus('The agent did not start; check /opt/openchamber/opencode.log');
-              postConn('error', 'opencode did not start in time (see /opt/openchamber/opencode.log).');
+      // First check opencode is installed, then start it as a MANAGED runtime service (survives —
+      // unlike a one-shot exec, which proot --kill-on-exit would reap the instant it returns).
+      sh('export PATH="$PATH:$HOME/.opencode/bin"; command -v opencode >/dev/null 2>&1 && echo OK || echo MISSING', 15000)
+        .then(function (r) {
+          if (!r || !r.stdout || r.stdout.indexOf('OK') < 0) {
+            setStatus('opencode is not installed — add it from Tools → Toolchains (AI).');
+            postConn('error', 'opencode is not installed. Install "opencode AI agent" in Tools → Toolchains.');
+            return;
+          }
+          setStatus('Starting the opencode agent…');
+          JCode.request('service.start', {
+            id: 'opencode',
+            command: 'opencode serve --hostname 127.0.0.1 --port ' + OC_PORT,
+            user: 'root',
+            extraPath: '/root/.opencode/bin',
+          }).then(function (res) {
+            if (!res.ok || !res.data || !res.data.running) {
+              setStatus('Could not start the agent (runtime not ready?).');
+              postConn('error', (res && res.error) || 'Failed to start opencode.');
+              return;
             }
+            waitHealthy(
+              function () { postConn('connected'); },
+              function () {
+                setStatus('The agent did not become ready in time.');
+                postConn('error', 'opencode did not start in time.');
+              }
+            );
           });
-        }, 1000);
-      });
+        });
     });
   }
 
