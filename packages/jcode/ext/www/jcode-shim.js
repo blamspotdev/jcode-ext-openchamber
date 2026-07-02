@@ -119,10 +119,13 @@
     var streamId = 'sse' + (++sseSeq) + '_' + seq;
     var controller = new AbortController();
     sseStreams[streamId] = controller;
-    nativeFetch(OC_BASE + ocPath(payload.path || '/event'), {
+    var url = OC_BASE + ocPath(payload.path || '/event');
+    if (window.__JCODE_DIAG__) console.log('[jcode-shim] SSE start ' + streamId + ' -> ' + url);
+    nativeFetch(url, {
       headers: Object.assign({ Accept: 'text/event-stream' }, cleanHeaders(payload.headers)),
       signal: controller.signal,
     }).then(function (res) {
+      if (window.__JCODE_DIAG__) console.log('[jcode-shim] SSE ' + streamId + ' status ' + res.status + ' ct=' + res.headers.get('content-type'));
       var reader = res.body.getReader();
       var decoder = new TextDecoder();
       function pump() {
@@ -132,16 +135,20 @@
             window.postMessage({ type: 'api:sse:end', streamId: streamId }, '*');
             return;
           }
-          window.postMessage({ type: 'api:sse:chunk', streamId: streamId, chunk: decoder.decode(r.value, { stream: true }) }, '*');
+          var chunk = decoder.decode(r.value, { stream: true });
+          if (window.__JCODE_DIAG__) console.log('[jcode-shim] SSE ' + streamId + ' chunk ' + chunk.length + 'b: ' + chunk.slice(0, 80).replace(/\n/g, '|'));
+          window.postMessage({ type: 'api:sse:chunk', streamId: streamId, chunk: chunk }, '*');
           pump();
         }).catch(function (e) {
           delete sseStreams[streamId];
+          if (window.__JCODE_DIAG__) console.log('[jcode-shim] SSE ' + streamId + ' error ' + e);
           window.postMessage({ type: 'api:sse:end', streamId: streamId, error: String(e) }, '*');
         });
       }
       pump();
     }).catch(function (e) {
       delete sseStreams[streamId];
+      if (window.__JCODE_DIAG__) console.log('[jcode-shim] SSE ' + streamId + ' fetch-fail ' + e);
       window.postMessage({ type: 'api:sse:end', streamId: streamId, error: String(e) }, '*');
     });
     return { status: 200, headers: {}, streamId: streamId };
@@ -177,6 +184,7 @@
   function handle(req) {
     var t = req.type;
     var p = req.payload || {};
+    if (window.__JCODE_DIAG__) console.log('[jcode-shim] req ' + t + ' ' + (p.method || '') + ' ' + (p.path || ''));
     var done = function (data) { reply(req, true, data); };
     var fail = function (e) { reply(req, false, undefined, (e && e.message) || String(e)); };
     try {
@@ -282,11 +290,33 @@
     var el = document.getElementById('loading-status');
     if (el) el.textContent = text;
   }
-  function postConn(status, error) {
+  function emitConn(status, error) {
+    // Drive ALL three delivery paths: the global the bundle's gate reads, the postMessage its own
+    // listener consumes, and the CustomEvent that re-runs the gate. Belt-and-suspenders because the
+    // bundle registers its message listener AFTER the shim's first emit, so early postMessages are
+    // otherwise dropped (postMessage is not buffered).
+    try { window.__OPENCHAMBER_CONNECTION__ = { status: status, error: error, cliAvailable: true }; } catch (e) {}
     window.postMessage({ type: 'connectionStatus', status: status, error: error }, '*');
+    try { window.dispatchEvent(new CustomEvent('openchamber:connection-status', { detail: { status: status, error: error } })); } catch (e) {}
+  }
+  function postConn(status, error) {
+    if (window.__JCODE_DIAG__) console.log('[jcode-shim] postConn ' + status + (error ? ' err=' + error : ''));
+    emitConn(status, error);
+    if (status !== 'connected' && status !== 'error') return;
+    // Re-assert on a short interval until the host overlay is removed: React may not have mounted
+    // (and the gate function may not exist) when the first emit lands.
+    var tries = 0;
+    var t = setInterval(function () {
+      tries++;
+      if (!document.getElementById('initial-loading') || tries > 50) { clearInterval(t); return; }
+      emitConn(status, error);
+    }, 400);
   }
   function health() {
-    return nativeFetch(OC_BASE + '/global/health').then(function (r) { return r.ok; }, function () { return false; });
+    return nativeFetch(OC_BASE + '/global/health').then(
+      function (r) { if (window.__JCODE_DIAG__) console.log('[jcode-shim] health ' + r.status + ' ok=' + r.ok); return r.ok; },
+      function (e) { if (window.__JCODE_DIAG__) console.log('[jcode-shim] health FETCH-FAIL ' + e); return false; }
+    );
   }
   function waitHealthy(onOk, onFail) {
     var tries = 0;
@@ -337,8 +367,25 @@
   }
 
   window.addEventListener('DOMContentLoaded', function () {
+    if (window.__JCODE_DIAG__) console.log('[jcode-shim] DOMContentLoaded, booting');
     window.postMessage({ type: 'themeChange', theme: 'dark' }, '*');
     bootOpencode();
+    if (window.__JCODE_DIAG__) {
+      setInterval(function () {
+        var c = window.__OPENCHAMBER_CONNECTION__;
+        var ov = document.getElementById('initial-loading');
+        var root = document.getElementById('root');
+        var ta = document.querySelector('textarea');
+        var fc = root && root.firstElementChild;
+        console.log('[jcode-shim] status=' + (c && c.status) + ' overlay=' + (ov ? 'present' : 'gone') +
+          ' rootChildren=' + (root ? root.childElementCount : 'n/a') +
+          ' rootH=' + (root ? root.getBoundingClientRect().height : 'n/a') +
+          ' firstChild=' + (fc ? fc.tagName + '.' + (fc.className || '').slice(0, 40) : 'none') +
+          ' fcH=' + (fc ? Math.round(fc.getBoundingClientRect().height) : 'n/a') +
+          ' textarea=' + (ta ? 'yes' : 'no') +
+          ' bodyTextLen=' + (document.body.innerText || '').length);
+      }, 3000);
+    }
     // Seed the context chip with the currently focused file.
     JCode.request('workbench.activeFile', {}).then(function (r) {
       if (r.ok) JCode._onEvent('activeFile', JSON.stringify(r.data || {}));

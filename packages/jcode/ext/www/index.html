@@ -24,9 +24,12 @@
     --vscode-font-family: system-ui, sans-serif;
     --vscode-font-size: 13px;
   }
-  html, body, #root { height: 100%; width: 100%; margin: 0; padding: 0; }
+  html, body { height: 100%; width: 100%; margin: 0; padding: 0; }
   body { overflow: hidden; background: var(--vscode-editor-background); color: var(--vscode-editor-foreground);
          font-family: var(--vscode-font-family); }
+  /* Fill the viewport via fixed positioning, not a height:100% percentage chain — in this WebView the
+     chain collapses #root to 0 height (the app's h-full content then renders 0px tall). */
+  #root { position: fixed; inset: 0; overflow: hidden; }
   #initial-loading { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 14px; background: var(--vscode-editor-background);
     transition: opacity .3s; }
