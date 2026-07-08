@@ -18,7 +18,23 @@ Everything outside `packages/jcode/` is upstream OpenChamber — see
 [README.upstream.md](README.upstream.md) for the original documentation and [LICENSE](LICENSE)
 (MIT, © OpenChamber contributors).
 
-## Syncing with upstream
+## Updating to a new OpenChamber release
+
+Use the helper — it merges upstream, rebuilds the committed static webview bundle, and bumps the
+jcode version to match upstream, all on a fresh `update/openchamber-<version>` branch:
+
+```sh
+bun run jcode:update            # local: merge + rebuild + version bump + commit
+bun run jcode:update -- --pr    # also push the branch and open a PR
+bun run jcode:update -- --dry-run   # just report the target version + how far behind
+```
+
+The jcode manifest version tracks the upstream OpenChamber version (not a separate track). The
+helper preserves the hand-authored `packages/jcode/ext/www/index.html` wrapper and `jcode-shim.js`;
+only `README.md` is expected to conflict on merge (kept as ours). See `scripts/update-jcode.mjs`
+(`--help`) for all options.
+
+### Manual sync (what the helper automates)
 
 ```sh
 git fetch upstream main

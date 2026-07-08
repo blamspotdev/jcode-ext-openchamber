@@ -69,6 +69,7 @@
     "vscode:build": "bun run --cwd packages/vscode build",
     "vscode:package": "bun run --cwd packages/vscode package",
     "vscode:type-check": "bun run --cwd packages/vscode type-check",
+    "jcode:update": "node scripts/update-jcode.mjs",
     "docs:validate": "node scripts/docs/validate-docs.mjs",
     "dead-code": "bunx knip@5.80.0 --no-exit-code --include files,exports,nsExports,types,nsTypes,enumMembers,duplicates",
     "doctor": "node scripts/react-doctor.mjs",
