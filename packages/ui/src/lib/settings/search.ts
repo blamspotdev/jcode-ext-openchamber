@@ -1,6 +1,7 @@
 import type { I18nKey } from '@/lib/i18n/store';
 import type { SettingsPageSlug, SettingsRuntimeContext } from './metadata';
 import { getSettingsPageMeta } from './metadata';
+import { RELAY_UI_ENABLED } from '@/lib/relay/gate';
 
 interface SettingsSearchItem {
   id: string;
@@ -167,6 +168,18 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     keywords: ['streaming', 'sse', 'websocket'],
   },
   {
+    id: 'chat.session-recap',
+    page: 'chat',
+    titleKey: 'settings.openchamber.visual.field.sessionRecap',
+    keywords: ['recap', 'assist', 'small model', 'summary'],
+  },
+  {
+    id: 'chat.session-suggestion',
+    page: 'chat',
+    titleKey: 'settings.openchamber.visual.field.sessionSuggestion',
+    keywords: ['suggestion', 'assist', 'small model', 'follow up'],
+  },
+  {
     id: 'chat.reasoning-traces',
     page: 'chat',
     titleKey: 'settings.openchamber.visual.field.showReasoningTraces',
@@ -259,6 +272,13 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     page: 'sessions',
     titleKey: 'settings.openchamber.defaults.field.showDeletionDialog',
     keywords: ['delete', 'confirmation'],
+  },
+  {
+    id: 'sessions.small-model',
+    page: 'sessions',
+    titleKey: 'settings.openchamber.defaults.smallModel.title',
+    descriptionKey: 'settings.openchamber.defaults.smallModel.description',
+    keywords: ['small model', 'utility', 'summary', 'recap', 'cheap', 'override'],
   },
   {
     id: 'sessions.auto-cleanup',
@@ -406,6 +426,15 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     descriptionKey: 'settings.remoteInstances.clientAuth.description',
     keywords: ['pairing link', 'client token', 'connect desktop', 'remote access'],
     isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
+    id: 'remote-instances.relay',
+    page: 'remote-instances',
+    titleKey: 'settings.remoteInstances.relay.title',
+    descriptionKey: 'settings.remoteInstances.relay.description',
+    keywords: ['relay', 'pairing', 'no ports', 'end-to-end encrypted', 'remote access', 'connect from anywhere'],
+    // Gated by openchamber_relay_gate until the relay UI ships publicly.
+    isAvailable: (ctx) => !ctx.isVSCode && RELAY_UI_ENABLED,
   },
   {
     id: 'remote-instances.direct-hosts',
@@ -678,22 +707,16 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     keywords: ['keyboard', 'hotkeys', 'bindings'],
   },
   {
-    id: 'voice.voice-setup',
+    id: 'voice.playback',
     page: 'voice',
-    titleKey: 'settings.voice.page.section.voiceSetup',
-    keywords: ['tts', 'voice mode', 'provider', 'speech rate', 'speech pitch', 'speech volume', 'language'],
+    titleKey: 'settings.voice.page.section.playbackAndSummary',
+    keywords: ['tts', 'read aloud', 'voice', 'provider', 'speech rate', 'speech pitch', 'speech volume', 'tts input mode', 'markdown'],
   },
   {
     id: 'voice.speech-recognition',
     page: 'voice',
     titleKey: 'settings.voice.page.section.speechRecognition',
-    keywords: ['stt', 'transcribe', 'whisper', 'microphone', 'silence threshold'],
-  },
-  {
-    id: 'voice.playback',
-    page: 'voice',
-    titleKey: 'settings.voice.page.section.playbackAndSummary',
-    keywords: ['read aloud', 'tts input mode', 'summary', 'markdown'],
+    keywords: ['stt', 'dictation', 'voice input', 'transcribe', 'whisper', 'parakeet', 'microphone'],
   },
   {
     id: 'tunnel.provider',
