@@ -23,3 +23,18 @@ api:
     - exec
     - fs
     - workbench
+
+# --- header fields merged from extension.jehm ---
+shortDescription: AI coding agent chat in your IDE — the OpenChamber UI for opencode, shipped as a static bundle (no Node.js needed).
+minJCodeVersion: 1.0.0
+targetJCodeVersion: 1.0.0
+category: AI
+subcategory: Agents
+images:
+  icon: media/icon.png
+  samples: []
+  walkthrough: []
+entry:
+  manifest: extension.yaml
+  ui: www/index.html
+  libs: []
