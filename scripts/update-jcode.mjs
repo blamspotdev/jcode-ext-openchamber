@@ -125,7 +125,7 @@ function printHelpAndExit() {
 
 function ensurePreconditions() {
   if (!fs.existsSync(path.join(ROOT, '.git'))) die('not a git repository');
-  for (const f of ['www/index.html', 'www/jcode-shim.js', 'extension.jehm', 'extension.yaml']) {
+  for (const f of ['www/index.html', 'www/jcode-shim.js', 'extension.yaml']) {
     if (!fs.existsSync(path.join(ROOT, JCODE, f))) die(`expected fork file missing: ${JCODE}/${f}`);
   }
   const upstream = git(['remote', 'get-url', 'upstream'], { capture: true, allowFail: true });
@@ -206,7 +206,6 @@ function swapBundle() {
 
 function bumpVersions(version) {
   const files = [
-    [`${JCODE}/extension.jehm`, /^version:\s*.*$/m, `version: ${version}`],
     [`${JCODE}/extension.yaml`, /^version:\s*.*$/m, `version: ${version}`],
     [`${JCODE}/www/index.html`, /extensionVersion:\s*'[^']*'/, `extensionVersion: '${version}-jcode'`],
   ];
