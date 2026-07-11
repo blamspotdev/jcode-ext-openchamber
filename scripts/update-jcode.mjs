@@ -306,7 +306,7 @@ function main() {
   }
   if (opts.dryRun) { info('Dry run — no changes made.'); return; }
 
-  if (gitOut(['rev-parse', '--verify', '--quiet', branch])) {
+  if (git(['rev-parse', '--verify', '--quiet', branch], { capture: true, allowFail: true }).status === 0) {
     die(`branch ${branch} already exists — delete it (git branch -D ${branch}) or pass --branch <name>`);
   }
   git(['switch', '-c', branch, opts.base]);
