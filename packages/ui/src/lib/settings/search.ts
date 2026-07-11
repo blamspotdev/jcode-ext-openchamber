@@ -1,7 +1,6 @@
 import type { I18nKey } from '@/lib/i18n/store';
 import type { SettingsPageSlug, SettingsRuntimeContext } from './metadata';
 import { getSettingsPageMeta } from './metadata';
-import { RELAY_UI_ENABLED } from '@/lib/relay/gate';
 
 interface SettingsSearchItem {
   id: string;
@@ -23,6 +22,8 @@ interface SettingsSearchAvailabilityContext extends SettingsRuntimeContext {
   isDesktopLocalOrigin: boolean;
   // macOS desktop shell — for controls that only render on darwin (e.g. dock badge).
   isMac: boolean;
+  // Windows desktop shell — for controls that only render on win32.
+  isWindows: boolean;
 }
 
 const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
@@ -204,6 +205,12 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     keywords: ['layout', 'wide', 'messages'],
   },
   {
+    id: 'chat.code-block-line-wrap',
+    page: 'chat',
+    titleKey: 'settings.openchamber.visual.field.codeBlockLineWrap',
+    keywords: ['code', 'wrap', 'line wrap', 'markdown'],
+  },
+  {
     id: 'chat.inline-assistant-actions',
     page: 'chat',
     titleKey: 'settings.openchamber.visual.field.showSplitAssistantMessageActions',
@@ -306,6 +313,14 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     descriptionKey: 'settings.openchamber.desktopNetwork.field.launchAtLoginDescription',
     keywords: ['desktop', 'startup', 'login'],
     isAvailable: (ctx) => ctx.isDesktopLocalOrigin,
+  },
+  {
+    id: 'sessions.desktop-minimize-to-tray',
+    page: 'sessions',
+    titleKey: 'settings.openchamber.desktopNetwork.field.minimizeToTray',
+    descriptionKey: 'settings.openchamber.desktopNetwork.field.minimizeToTrayDescription',
+    keywords: ['desktop', 'tray', 'system tray', 'minimize', 'close', 'background', 'windows'],
+    isAvailable: (ctx) => ctx.isDesktopLocalOrigin && ctx.isWindows,
   },
   {
     id: 'sessions.desktop-keep-awake',
@@ -424,17 +439,8 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     page: 'remote-instances',
     titleKey: 'settings.remoteInstances.clientAuth.title',
     descriptionKey: 'settings.remoteInstances.clientAuth.description',
-    keywords: ['pairing link', 'client token', 'connect desktop', 'remote access'],
+    keywords: ['pairing link', 'client token', 'connect desktop', 'remote access', 'relay', 'devices', 'connect from anywhere'],
     isAvailable: (ctx) => !ctx.isVSCode,
-  },
-  {
-    id: 'remote-instances.relay',
-    page: 'remote-instances',
-    titleKey: 'settings.remoteInstances.relay.title',
-    descriptionKey: 'settings.remoteInstances.relay.description',
-    keywords: ['relay', 'pairing', 'no ports', 'end-to-end encrypted', 'remote access', 'connect from anywhere'],
-    // Gated by openchamber_relay_gate until the relay UI ships publicly.
-    isAvailable: (ctx) => !ctx.isVSCode && RELAY_UI_ENABLED,
   },
   {
     id: 'remote-instances.direct-hosts',
